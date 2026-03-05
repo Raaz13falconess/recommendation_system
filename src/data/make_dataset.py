@@ -28,4 +28,4 @@ def main(input_path: str, output_dir: str):
 
 
 if __name__ == "__main__":
-    main("Data/raw/ml-1m/ratings.dat", "Data/processed")
+    main("../../Data/raw/ml-1m/ratings.dat", "../../Data/processed")

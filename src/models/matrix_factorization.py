@@ -17,8 +17,10 @@ class MatrixFactorization(nn.Module):
         self._init_weights()
 
     def _init_weights(self):
-        nn.init.normal_(self.user_embedding.weight, std=0.01)
-        nn.init.normal_(self.item_embedding.weight, std=0.01)
+        # More stable initialization
+        nn.init.xavier_uniform_(self.user_embedding.weight)
+        nn.init.xavier_uniform_(self.item_embedding.weight)
+
         nn.init.zeros_(self.user_bias.weight)
         nn.init.zeros_(self.item_bias.weight)
 
@@ -26,9 +28,18 @@ class MatrixFactorization(nn.Module):
         user_emb = self.user_embedding(user_idx)
         item_emb = self.item_embedding(item_idx)
 
+        # Debug check
+        if torch.isnan(user_emb).any():
+            print("NaN detected in user embeddings")
+
+        if torch.isnan(item_emb).any():
+            print("NaN detected in item embeddings")
+
         dot_product = (user_emb * item_emb).sum(dim=1)
 
-        user_b = self.user_bias(user_idx).squeeze()
-        item_b = self.item_bias(item_idx).squeeze()
+        user_b = self.user_bias(user_idx).squeeze(1)
+        item_b = self.item_bias(item_idx).squeeze(1)
 
-        return dot_product + user_b + item_b + self.global_bias
+        output = dot_product + user_b + item_b + self.global_bias
+
+        return output
