@@ -1,15 +1,27 @@
 import pandas as pd
 
-def time_based_split(df: pd.DataFrame, train_size=0.8, val_size=0.1):
-    df = df.sort_values("timestamp")
 
-    n_total = len(df)
-    n_train = int(n_total* train_size)
-    n_val = int(n_total* val_size)
+def time_based_split(df, train_ratio=0.8, val_ratio=0.1):
 
-    train = df.iloc[:n_train]
-    val = df.iloc[n_train: n_train + n_val]
-    test = df.iloc[n_train + n_val:]
+    train_list = []
+    val_list = []
+    test_list = []
+
+    for user_id, user_df in df.groupby("user_idx"):
+
+        user_df = user_df.sort_values("timestamp")
+
+        n = len(user_df)
+
+        train_end = int(n * train_ratio)
+        val_end = int(n * (train_ratio + val_ratio))
+
+        train_list.append(user_df.iloc[:train_end])
+        val_list.append(user_df.iloc[train_end:val_end])
+        test_list.append(user_df.iloc[val_end:])
+
+    train = pd.concat(train_list)
+    val = pd.concat(val_list)
+    test = pd.concat(test_list)
 
     return train, val, test
-
