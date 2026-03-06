@@ -82,7 +82,7 @@ def evaluate(model, dataloader, criterion, device):
 
     return total_loss / len(dataloader)
 
-def evaluate_ranking(model, val_df, n_items, device, k=10):
+def evaluate_ranking(model, train_df, val_df, n_items, device, k=10):
 
     model.eval()
 
@@ -95,13 +95,15 @@ def evaluate_ranking(model, val_df, n_items, device, k=10):
     for user, group in user_groups:
 
         relevant_items = group["movie_idx"].tolist()
+        seen_items = train_df[train_df["user_idx"] == user]["movie_idx"].tolist()
 
         recommended = get_top_k_recommendations(
             model,
             user,
             n_items,
             k,
-            device
+            device,
+            seen_items=seen_items
         )
         precisions.append(precision_at_k(recommended, relevant_items, k))
         recalls.append(recall_at_k(recommended, relevant_items, k))
@@ -160,6 +162,7 @@ def main():
 
     ranking_metrics = evaluate_ranking(
         model,
+        train_df,
         val_df,
         n_items,
         device,
