@@ -5,6 +5,8 @@ from tqdm import tqdm
 import math
 
 from src.models.matrix_factorization import MatrixFactorization
+from src.models.recommender import get_top_k_recommendations
+from src.models.metrics import precision_at_k, recall_at_k, ndcg_at_k
 
 
 class RatingsDataset(Dataset):
@@ -80,6 +82,37 @@ def evaluate(model, dataloader, criterion, device):
 
     return total_loss / len(dataloader)
 
+def evaluate_ranking(model, val_df, n_items, device, k=10):
+
+    model.eval()
+
+    user_groups = val_df.groupby("user_idx")
+
+    precisions = []
+    recalls = []
+    ndcgs = []
+
+    for user, group in user_groups:
+
+        relevant_items = group["movie_idx"].tolist()
+
+        recommended = get_top_k_recommendations(
+            model,
+            user,
+            n_items,
+            k,
+            device
+        )
+        precisions.append(precision_at_k(recommended, relevant_items, k))
+        recalls.append(recall_at_k(recommended, relevant_items, k))
+        ndcgs.append(ndcg_at_k(recommended, relevant_items, k))
+
+    return {
+        "precision": sum(precisions) / len(precisions),
+        "recall": sum(recalls) / len(recalls),
+        "ndcg": sum(ndcgs) / len(ndcgs),
+    }
+
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -124,6 +157,19 @@ def main():
         print(f"Train RMSE: {math.sqrt(train_loss):.4f}")
         print(f"Val RMSE: {math.sqrt(val_loss):.4f}")
         print("-" * 40)
+
+    ranking_metrics = evaluate_ranking(
+        model,
+        val_df,
+        n_items,
+        device,
+        k=10
+    )
+
+    print("\nRanking Metrics")
+    print("Precision@10:", ranking_metrics["precision"])
+    print("Recall@10:", ranking_metrics["recall"])
+    print("NDCG@10:", ranking_metrics["ndcg"])
 
 
 if __name__ == "__main__":
