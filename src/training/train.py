@@ -2,6 +2,7 @@ import torch
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
+import math
 
 from src.models.matrix_factorization import MatrixFactorization
 
@@ -40,9 +41,7 @@ def train_one_epoch(model, dataloader, optimizer, criterion, device):
             print("Items min/max:", items.min(), items.max())
             return float("nan")
 
-        # TEMP DEBUG: clamp predictions to rating range
-        predictions = torch.clamp(predictions, 0, 5)
-
+        predictions = model(users, items)
         loss = criterion(predictions, ratings)
 
         if torch.isnan(loss):
@@ -110,20 +109,20 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=1024, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=1024)
 
-    model = MatrixFactorization(n_users, n_items, embedding_dim=64).to(device)
+    model = MatrixFactorization(n_users, n_items, embedding_dim=100).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     criterion = torch.nn.MSELoss()
 
-    epochs = 5
+    epochs = 20
 
     for epoch in range(epochs):
         train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
         val_loss = evaluate(model, val_loader, criterion, device)
 
         print(f"\nEpoch {epoch+1}/{epochs}")
-        print(f"Train MSE: {train_loss}")
-        print(f"Val MSE: {val_loss}")
+        print(f"Train RMSE: {math.sqrt(train_loss):.4f}")
+        print(f"Val RMSE: {math.sqrt(val_loss):.4f}")
         print("-" * 40)
 
 
