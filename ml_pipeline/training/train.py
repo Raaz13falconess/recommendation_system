@@ -4,11 +4,10 @@ from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 import math
 
-from src.models.matrix_factorization import MatrixFactorization
-from src.models.recommender import get_top_k_recommendations
-from src.models.metrics import precision_at_k, recall_at_k, ndcg_at_k
+from ml_pipeline.models.matrix_factorization import MatrixFactorization
+from ml_pipeline.models.metrics import precision_at_k, recall_at_k, ndcg_at_k
 
-from src.inference.recommender_engine import RecommenderEngine
+from recommender_service.inference.recommender_engine import RecommenderEngine
 
 class RatingsDataset(Dataset):
     def __init__(self, df):
