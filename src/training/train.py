@@ -8,6 +8,7 @@ from src.models.matrix_factorization import MatrixFactorization
 from src.models.recommender import get_top_k_recommendations
 from src.models.metrics import precision_at_k, recall_at_k, ndcg_at_k
 
+from src.inference.recommender_engine import RecommenderEngine
 
 class RatingsDataset(Dataset):
     def __init__(self, df):
@@ -84,7 +85,8 @@ def evaluate(model, dataloader, criterion, device):
 
 def evaluate_ranking(model, train_df, val_df, n_items, device, k=10):
 
-    model.eval()
+    recommender_engine = RecommenderEngine(model, device)
+    # model.eval()
 
     user_groups = val_df.groupby("user_idx")
 
@@ -97,12 +99,9 @@ def evaluate_ranking(model, train_df, val_df, n_items, device, k=10):
         relevant_items = group["movie_idx"].tolist()
         seen_items = train_df[train_df["user_idx"] == user]["movie_idx"].tolist()
 
-        recommended = get_top_k_recommendations(
-            model,
+        recommended = recommender_engine.recommend(
             user,
-            n_items,
             k,
-            device,
             seen_items=seen_items
         )
         precisions.append(precision_at_k(recommended, relevant_items, k))
