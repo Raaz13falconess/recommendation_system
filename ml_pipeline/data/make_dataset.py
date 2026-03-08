@@ -5,6 +5,8 @@ from load import load_ratings
 from preprocess import encode_ids
 from split import time_based_split
 
+import json
+
 def main(input_path: str, output_dir: str):
     
     print("Loading data...")
@@ -12,6 +14,16 @@ def main(input_path: str, output_dir: str):
 
     print("Encoding IDs....")
     df, user_map, movie_map = encode_ids(df)
+
+    movie_index_mapping = (
+        df[["movie_idx", "movie_id"]]
+        .drop_duplicates()
+        .set_index("movie_idx")["movie_id"]
+        .to_dict()
+    )
+
+    with open("embeddings/movie_index_map.json", "w") as f:
+        json.dump(movie_index_mapping, f)
 
     print("Splitting dataset....")
     train, val, test = time_based_split(df)
