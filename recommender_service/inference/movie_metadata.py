@@ -1,12 +1,12 @@
 import pandas as pd
-
+from pathlib import Path
 
 class MovieMetadata:
 
     def __init__(self, movie_file_path):
-
+        movie_file_path_x = Path(movie_file_path)
         self.movies_df = pd.read_csv(
-            movie_file_path,
+            movie_file_path_x,
             sep="::",
             engine="python",
             names=["movie_id", "title", "genres"]

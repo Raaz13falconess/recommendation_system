@@ -1,19 +1,21 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import numpy as np
+from pathlib import Path
 
 from recommender_service.inference.recommender_engine import RecommenderEngine
-from recommender_service.inference.movie_metata import MovieMetadata
+from recommender_service.inference.movie_metadata import MovieMetadata
 
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 app = FastAPI(title="Movie Recommendation API")
-metadata = MovieMetadata("../../Data/raw/ml-1m/movies.dat")
+metadata = MovieMetadata(BASE_DIR / "Data/raw/ml-1m/movies.dat")
 
 
 # Load recommender engine once at startup
 engine = RecommenderEngine(
-    "embeddings/user_embeddings.npy",
-    "embeddings/item_embeddings.npy"
+    BASE_DIR / "embeddings/user_embeddings.npy",
+    BASE_DIR / "embeddings/item_embeddings.npy"
 )
 
 
