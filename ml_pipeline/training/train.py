@@ -4,6 +4,9 @@ from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 import math
 
+import numpy as np
+import os
+
 from ml_pipeline.models.matrix_factorization import MatrixFactorization
 from ml_pipeline.models.metrics import precision_at_k, recall_at_k, ndcg_at_k
 
@@ -172,6 +175,20 @@ def main():
     print("Recall@10:", ranking_metrics["recall"])
     print("NDCG@10:", ranking_metrics["ndcg"])
 
+    os.makedirs("models", exist_ok=True)
+    os.makedirs("embeddings", exist_ok=True)
+
+    # Save model
+    torch.save(model.state_dict(), "models/mf_model.pt")
+
+    # Export embeddings
+    user_embeddings = model.user_embedding.weight.detach().cpu().numpy()
+    item_embeddings = model.item_embedding.weight.detach().cpu().numpy()
+
+    np.save("embeddings/user_embeddings.npy", user_embeddings)
+    np.save("embeddings/item_embeddings.npy", item_embeddings)
+
+    print("Model and embeddings saved successfully.")
 
 if __name__ == "__main__":
     main()
