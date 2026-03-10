@@ -42,3 +42,22 @@ def recommend(user_id: int, k: int = 10):
         "user_id": user_id,
         "recommendations": results
     }
+
+@app.get("/similar/{movie_id}")
+def similar(movie_id: int, k: int = 10):
+
+    movie_ids = engine.similar_movies(movie_id, k)
+
+    results = [
+        {
+            "movie_id": mid,
+            "title": metadata.get_title(mid)
+        }
+        for mid in movie_ids
+    ]
+
+    return {
+        "movie_id": movie_id,
+        "title": metadata.get_title(movie_id),
+        "similar_movies": results
+    }
