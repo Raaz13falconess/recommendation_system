@@ -1,5 +1,6 @@
-import json
 import numpy as np
+import json
+import faiss
 
 
 class RecommenderEngine:
@@ -7,29 +8,35 @@ class RecommenderEngine:
     def __init__(self, user_embedding_path, item_embedding_path, movie_map_path):
 
         self.user_embeddings = np.load(user_embedding_path)
-        self.item_embeddings = np.load(item_embedding_path)
+        self.item_embeddings = np.load(item_embedding_path).astype("float32")
 
         with open(movie_map_path) as f:
             self.movie_map = json.load(f)
 
-    def recommend(self, user_id, k=10, seen_items=None):
+        # Build FAISS index
+        dim = self.item_embeddings.shape[1]
 
-        user_vector = self.user_embeddings[user_id]
+        self.index = faiss.IndexFlatIP(dim)
 
-        scores = self.item_embeddings @ user_vector
+        # Normalize embeddings for cosine similarity
+        faiss.normalize_L2(self.item_embeddings)
 
-        if seen_items is not None:
-            scores[seen_items] = -1e9
+        self.index.add(self.item_embeddings)
 
-        top_k_idx = np.argsort(scores)[-k:][::-1]
+    def recommend(self, user_id, k=10):
 
-        movie_ids = [self.movie_map[str(i)] for i in top_k_idx]
+        user_vector = self.user_embeddings[user_id].astype("float32").reshape(1, -1)
+
+        faiss.normalize_L2(user_vector)
+
+        scores, indices = self.index.search(user_vector, k)
+
+        movie_ids = [self.movie_map[str(i)] for i in indices[0]]
 
         return movie_ids
-    
+
     def similar_movies(self, movie_id, k=10):
 
-        # Convert MovieLens ID → embedding index
         movie_idx = None
         for idx, mid in self.movie_map.items():
             if mid == movie_id:
@@ -39,19 +46,12 @@ class RecommenderEngine:
         if movie_idx is None:
             raise ValueError("Movie ID not found")
 
-        target_vector = self.item_embeddings[movie_idx]
+        movie_vector = self.item_embeddings[movie_idx].reshape(1, -1)
 
-        # Normalize embeddings
-        item_norms = np.linalg.norm(self.item_embeddings, axis=1)
-        target_norm = np.linalg.norm(target_vector)
+        scores, indices = self.index.search(movie_vector, k + 1)
 
-        similarities = self.item_embeddings @ target_vector / (item_norms * target_norm + 1e-8)
+        indices = indices[0][1:]
 
-        # Exclude the movie itself
-        similarities[movie_idx] = -1
-
-        top_k_idx = np.argsort(similarities)[-k:][::-1]
-
-        movie_ids = [self.movie_map[str(i)] for i in top_k_idx]
+        movie_ids = [self.movie_map[str(i)] for i in indices]
 
         return movie_ids
