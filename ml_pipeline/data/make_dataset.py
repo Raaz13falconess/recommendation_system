@@ -1,11 +1,13 @@
 import argparse
 from pathlib import Path
 
-from load import load_ratings
-from preprocess import encode_ids
-from split import time_based_split
+from ml_pipeline.data.load import load_ratings
+from ml_pipeline.data.preprocess import encode_ids
+from ml_pipeline.data.split import time_based_split
 
 import json
+
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 def main(input_path: str, output_dir: str):
     
@@ -21,6 +23,8 @@ def main(input_path: str, output_dir: str):
         .set_index("movie_idx")["movie_id"]
         .to_dict()
     )
+
+    Path("embeddings").mkdir(exist_ok=True)
 
     with open("embeddings/movie_index_map.json", "w") as f:
         json.dump(movie_index_mapping, f)
@@ -40,4 +44,6 @@ def main(input_path: str, output_dir: str):
 
 
 if __name__ == "__main__":
-    main("../../Data/raw/ml-1m/ratings.dat", "../../Data/processed")
+    input_path = Path(BASE_DIR / "Data/raw/ml-1m/ratings.dat")
+    output_path = Path(BASE_DIR / "Data/processed")
+    main(input_path, output_path)

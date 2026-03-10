@@ -9,7 +9,8 @@ class MovieMetadata:
             movie_file_path_x,
             sep="::",
             engine="python",
-            names=["movie_id", "title", "genres"]
+            names=["movie_id", "title", "genres"],
+            encoding="latin-1"
         )
 
         self.movie_dict = self.movies_df.set_index("movie_id")["title"].to_dict()

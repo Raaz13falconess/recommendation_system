@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 
 
-def load_ratings(data_path: str) -> pd.DataFrame:
+def load_ratings(data_path):
     path = Path(data_path)
 
     if not path.exists():
@@ -11,9 +11,9 @@ def load_ratings(data_path: str) -> pd.DataFrame:
     print(f"Loading file: {data_path}")
 
     # Detect file type automatically
-    if data_path.endswith(".dat"):
+    if str(path).endswith(".dat"):
         df = pd.read_csv(
-            path,
+            data_path,
             sep="::",
             engine="python",
             names=["user_id", "movie_id", "rating", "timestamp"]
