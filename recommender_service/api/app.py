@@ -16,7 +16,7 @@ metadata = MovieMetadata(BASE_DIR / "Data/raw/ml-1m/movies.dat")
 engine = RecommenderEngine(
     BASE_DIR / "embeddings/user_embeddings.npy",
     BASE_DIR / "embeddings/item_embeddings.npy",
-    
+    BASE_DIR / "embeddings/movie_index_map.json"
 )
 
 
