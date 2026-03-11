@@ -6,3 +6,5 @@ myenv
 ml-32m
 ml-1m
 __pycache__
+mlflow.db
+mlruns

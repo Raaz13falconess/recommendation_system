@@ -3,6 +3,7 @@ import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 import math
+from pathlib import Path
 
 import numpy as np
 import os
@@ -11,6 +12,15 @@ from ml_pipeline.models.matrix_factorization import MatrixFactorization
 from ml_pipeline.models.metrics import precision_at_k, recall_at_k, ndcg_at_k
 
 from recommender_service.inference.recommender_engine import RecommenderEngine
+
+import mlflow
+import mlflow.pytorch
+
+embedding_dim = 100
+lr=0.0001
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+
 
 class RatingsDataset(Dataset):
     def __init__(self, df):
@@ -87,8 +97,11 @@ def evaluate(model, dataloader, criterion, device):
 
 def evaluate_ranking(model, train_df, val_df, n_items, device, k=10):
 
-    recommender_engine = RecommenderEngine(model, device)
-    # model.eval()
+    recommender_engine = RecommenderEngine(
+        BASE_DIR / "embeddings/user_embeddings.npy",
+        BASE_DIR / "embeddings/item_embeddings.npy",
+        BASE_DIR / "embeddings/movie_index_map.json"
+    )
 
     user_groups = val_df.groupby("user_idx")
 
@@ -99,12 +112,12 @@ def evaluate_ranking(model, train_df, val_df, n_items, device, k=10):
     for user, group in user_groups:
 
         relevant_items = group["movie_idx"].tolist()
-        seen_items = train_df[train_df["user_idx"] == user]["movie_idx"].tolist()
+        # seen_items = train_df[train_df["user_idx"] == user]["movie_idx"].tolist()
 
         recommended = recommender_engine.recommend(
             user,
             k,
-            seen_items=seen_items
+            # seen_items=seen_items
         )
         precisions.append(precision_at_k(recommended, relevant_items, k))
         recalls.append(recall_at_k(recommended, relevant_items, k))
@@ -118,6 +131,9 @@ def evaluate_ranking(model, train_df, val_df, n_items, device, k=10):
 
 
 def main():
+    
+    mlflow.set_experiment("movie_recommender_system ")
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print("Loading parquet files...")
@@ -152,14 +168,21 @@ def main():
 
     epochs = 20
 
+    with mlflow.start_run():
+        mlflow.log_param("embedding_dim", embedding_dim)
+        mlflow.log_param("epochs", epochs)
+        mlflow.log_param("learning_rate", lr)
+
     for epoch in range(epochs):
         train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
         val_loss = evaluate(model, val_loader, criterion, device)
 
-        print(f"\nEpoch {epoch+1}/{epochs}")
-        print(f"Train RMSE: {math.sqrt(train_loss):.4f}")
-        print(f"Val RMSE: {math.sqrt(val_loss):.4f}")
-        print("-" * 40)
+        train_rmse = math.sqrt(train_loss)
+        val_rmse = math.sqrt(val_loss)
+
+        mlflow.log_metric("train_rmse", train_rmse, step=epoch)
+        mlflow.log_metric("val_rmse", val_rmse, step=epoch)
+
 
     ranking_metrics = evaluate_ranking(
         model,
@@ -170,16 +193,20 @@ def main():
         k=10
     )
 
-    print("\nRanking Metrics")
-    print("Precision@10:", ranking_metrics["precision"])
-    print("Recall@10:", ranking_metrics["recall"])
-    print("NDCG@10:", ranking_metrics["ndcg"])
+    precision = ranking_metrics["precision"]
+    recall = ranking_metrics["recall"]
+    ndcg = ranking_metrics["ndcg"]
+
+    mlflow.log_metric("precision_at_10", precision)
+    mlflow.log_metric("recall", recall)
+    mlflow.log_metric("ndcg", ndcg)
 
     os.makedirs("models", exist_ok=True)
     os.makedirs("embeddings", exist_ok=True)
 
     # Save model
     torch.save(model.state_dict(), "models/mf_model.pt")
+    mlflow.pytorch.log_model(model, "matrix_factorization_model")
 
     # Export embeddings
     user_embeddings = model.user_embedding.weight.detach().cpu().numpy()
@@ -187,6 +214,9 @@ def main():
 
     np.save("embeddings/user_embeddings.npy", user_embeddings)
     np.save("embeddings/item_embeddings.npy", item_embeddings)
+
+    mlflow.log_artifact("embeddings/user_embeddings.npy")
+    mlflow.log_artifact("embeddings/item_embeddings.npy")
 
     print("Model and embeddings saved successfully.")
 
